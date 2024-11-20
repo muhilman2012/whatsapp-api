@@ -17,25 +17,14 @@ use App\Http\Controllers\AuthController;
 |
 */
 
-// Route untuk mendapatkan user yang sedang login
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
 // Route untuk autentikasi
 Route::post('/register', [AuthController::class, 'register']); // Register user baru
 Route::post('/login', [AuthController::class, 'login']);       // Login user
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']); // Logout user
 
-// Route untuk laporan
-Route::prefix('laporan')->group(function () {
-    Route::post('/kirim', [LaporanController::class, 'store']); // Kirim laporan
-    Route::get('/status/{nomor_tiket}', [LaporanController::class, 'getStatus']) // Cek status laporan
-        ->where('nomor_tiket', '[A-Z0-9]{5}'); // Validasi nomor tiket (5 karakter alfanumerik)
-});
-
-// Endpoint untuk update status laporan (hanya untuk user terautentikasi)
+// Routes untuk laporan
 Route::middleware('auth:sanctum')->prefix('laporan')->group(function () {
-    Route::patch('/status/{nomor_tiket}', [LaporanController::class, 'updateStatus'])
-        ->where('nomor_tiket', '[A-Z0-9]{5}'); // Validasi nomor tiket (5 karakter alfanumerik)
+    Route::post('/kirim', [LaporanController::class, 'store']); // Kirim laporan
+    Route::get('/status/{nomor_tiket}', [LaporanController::class, 'getStatus']); // Cek status laporan
+    Route::patch('/status/{nomor_tiket}', [LaporanController::class, 'updateStatus']); // Update status laporan
 });

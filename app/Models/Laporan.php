@@ -9,28 +9,33 @@ class Laporan extends Model
 {
     use HasFactory;
 
+    protected $table = 'laporans';
+
     protected $fillable = [
         'nomor_tiket',
-        'namalengkap',
+        'nomor_pengadu',
+        'email',
+        'nama_lengkap',
         'nik',
         'jenis_kelamin',
-        'alamatlengkap',
+        'alamat_lengkap',
         'jenis_laporan',
         'judul',
         'detail',
         'lokasi',
-        'dokumenpendukung',
-        'tanggalkejadian',
+        'dokumen_pendukung',
+        'tanggal_kejadian',
         'status',
+        'tanggapan',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
+    protected $casts = [
+        'tanggal_kejadian' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
-        // Generate nomor tiket unik 5 digit
-        static::creating(function ($laporan) {
-            $laporan->nomor_tiket = strtoupper(substr(md5(uniqid()), 0, 5));
-        });
-    }
+    protected $attributes = [
+        'status' => 'Diproses',
+    ];
 }
