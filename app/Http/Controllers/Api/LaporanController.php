@@ -32,7 +32,7 @@ class LaporanController extends Controller
         }
 
         $laporan = Laporan::create([
-            'nomor_tiket' => strtoupper(Str::random(5)),
+            'nomor_tiket' => str_pad(mt_rand(0, 9999999), 7, '0', STR_PAD_LEFT),
             'nomor_pengadu' => $request->nomor_pengadu,
             'email' => $request->email,
             'nama_lengkap' => $request->nama_lengkap,

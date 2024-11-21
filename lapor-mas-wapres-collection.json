@@ -1,0 +1,62 @@
+{
+    "info": {
+      "name": "Laporan Mas Wapres API",
+      "description": "Koleksi API untuk Kirim Laporan dan Cek Status Laporan",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Kirim Laporan",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}",
+              "type": "text"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"nama_lengkap\": \"John Doe\",\n    \"nik\": \"1234567890123456\",\n    \"jenis_kelamin\": \"L\",\n    \"alamat_lengkap\": \"Jl. Sudirman No.1\",\n    \"jenis_laporan\": \"Pengaduan\",\n    \"judul\": \"Lampu Jalan Mati\",\n    \"detail\": \"Lampu jalan di depan rumah saya mati selama 3 hari.\",\n    \"lokasi\": \"Jakarta Selatan\",\n    \"tanggal_kejadian\": \"2024-11-19\"\n}"
+          },
+          "url": {
+            "raw": "http://apibot.lapormaswapres.id/api/laporan/kirim",
+            "protocol": "http",
+            "host": ["apibot", "lapormaswapres", "id"],
+            "path": ["api", "laporan", "kirim"]
+          }
+        }
+      },
+      {
+        "name": "Cek Status Laporan",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://apibot.lapormaswapres.id/api/laporan/status/{nomor_tiket}",
+            "protocol": "http",
+            "host": ["apibot", "lapormaswapres", "id"],
+            "path": ["api", "laporan", "status", "{nomor_tiket}"],
+            "variable": [
+              {
+                "key": "nomor_tiket",
+                "value": "ABCDE"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }  
