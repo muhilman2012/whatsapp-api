@@ -11,47 +11,84 @@ class LaporanController extends Controller
 {
     public function store(Request $request)
     {
-        $request->validate([
-            'nama_lengkap' => 'required|string|max:255',
-            'nik' => 'required|digits:16',
-            'jenis_kelamin' => 'required|in:L,P',
-            'alamat_lengkap' => 'required|string',
-            'jenis_laporan' => 'required|in:Pengaduan,Aspirasi,Permintaan Informasi',
-            'judul' => 'required|string|max:255',
-            'detail' => 'required|string',
-            'lokasi' => 'nullable|string',
-            'tanggal_kejadian' => 'nullable|date|required_if:jenis_laporan,Pengaduan',
-            'dokumen_pendukung' => 'nullable|file|mimes:pdf|max:10240',
-            'nomor_pengadu' => 'nullable|string|max:15',
-            'email' => 'nullable|email|max:255',
-        ]);
+        try {
+            // Validasi Input
+            $request->validate([
+                'nama_lengkap' => 'required|string|max:255',
+                'nik' => [
+                    'required',
+                    'digits:16',
+                    function ($attribute, $value, $fail) {
+                        if (!preg_match('/^\d{16}$/', $value)) {
+                            $fail('Format NIK tidak valid. Harus berupa 16 digit angka.');
+                        }
 
-        $filePath = null;
-        if ($request->hasFile('dokumen_pendukung')) {
-            $filePath = $request->file('dokumen_pendukung')->store('dokumen');
+                        // Cek apakah NIK sudah mengirim laporan dalam 20 hari terakhir
+                        $existingReport = \App\Models\Laporan::where('nik', $value)
+                            ->where('created_at', '>=', now()->subDays(20))
+                            ->first();
+
+                        if ($existingReport) {
+                            $fail('Anda hanya dapat mengirim laporan sekali setiap 20 hari.');
+                        }
+                    },
+                ],
+                'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+                'alamat_lengkap' => 'required|string',
+                'judul' => 'required|string|max:255',
+                'detail' => 'required|string',
+                'lokasi' => 'nullable|string',
+                'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
+                'dokumen_pendukung' => 'nullable|file|mimes:pdf|max:10240',
+                'nomor_pengadu' => 'nullable|string|max:15',
+                'email' => 'nullable|email|max:255',
+            ]);
+
+            // Mencegah inputan berbahaya (sanitize input)
+            $input = $request->except(['dokumen_pendukung']);
+            array_walk_recursive($input, function (&$value) {
+                $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+            });
+
+            // Proses Upload Dokumen Pendukung
+            $filePath = null;
+            if ($request->hasFile('dokumen_pendukung')) {
+                $filePath = $request->file('dokumen_pendukung')->store('dokumen');
+            }
+
+            // Buat Laporan Baru
+            $laporan = \App\Models\Laporan::create([
+                'nomor_tiket' => str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT),
+                'nama_lengkap' => $request->nama_lengkap,
+                'nik' => $request->nik,
+                'jenis_kelamin' => $request->jenis_kelamin,
+                'alamat_lengkap' => $request->alamat_lengkap,
+                'judul' => $request->judul,
+                'detail' => $request->detail,
+                'lokasi' => $request->lokasi,
+                'tanggal_kejadian' => $request->tanggal_kejadian,
+                'dokumen_pendukung' => $filePath,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Laporan berhasil dikirim.',
+                'nomor_tiket' => $laporan->nomor_tiket,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Tangkap error validasi dan kembalikan respons JSON
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            // Tangkap error lainnya
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $laporan = Laporan::create([
-            'nomor_tiket' => str_pad(mt_rand(0, 9999999), 7, '0', STR_PAD_LEFT),
-            'nomor_pengadu' => $request->nomor_pengadu,
-            'email' => $request->email,
-            'nama_lengkap' => $request->nama_lengkap,
-            'nik' => $request->nik,
-            'jenis_kelamin' => $request->jenis_kelamin,
-            'alamat_lengkap' => $request->alamat_lengkap,
-            'jenis_laporan' => $request->jenis_laporan,
-            'judul' => $request->judul,
-            'detail' => $request->detail,
-            'lokasi' => $request->lokasi,
-            'tanggal_kejadian' => $request->tanggal_kejadian,
-            'dokumen_pendukung' => $filePath,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Laporan berhasil dikirim.',
-            'nomor_tiket' => $laporan->nomor_tiket
-        ]);
     }
 
     public function getStatus($nomor_tiket)
@@ -61,7 +98,7 @@ class LaporanController extends Controller
         if (!$laporan) {
             return response()->json([
                 'success' => false,
-                'message' => 'Laporan tidak ditemukan.'
+                'message' => 'Laporan tidak ditemukan.',
             ], 404);
         }
 
@@ -69,42 +106,11 @@ class LaporanController extends Controller
             'success' => true,
             'nomor_tiket' => $laporan->nomor_tiket,
             'status' => $laporan->status,
-            'jenis_laporan' => $laporan->jenis_laporan,
             'judul' => $laporan->judul,
             'detail' => $laporan->detail,
             'lokasi' => $laporan->lokasi,
             'tanggal_kejadian' => $laporan->tanggal_kejadian,
-            'dokumen_pendukung' => $laporan->dokumen_pendukung,
-            'tanggapan' => $laporan->tanggapan,
-        ]);
-    }
-
-    public function updateStatus(Request $request, $nomor_tiket)
-    {
-        $request->validate([
-            'status' => 'required|string|max:255',
-            'tanggapan' => 'nullable|string',
-        ]);
-
-        $laporan = Laporan::where('nomor_tiket', $nomor_tiket)->first();
-
-        if (!$laporan) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Laporan tidak ditemukan.'
-            ], 404);
-        }
-
-        $laporan->update([
-            'status' => $request->status,
-            'tanggapan' => $request->tanggapan,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Status laporan berhasil diperbarui.',
-            'status' => $laporan->status,
-            'tanggapan' => $laporan->tanggapan
+            'tanggapan' => $laporan->tanggapan, // Tambahkan tanggapan
         ]);
     }
 }
