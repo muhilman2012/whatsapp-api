@@ -22,15 +22,6 @@ class LaporanController extends Controller
                         if (!preg_match('/^\d{16}$/', $value)) {
                             $fail('Format NIK tidak valid. Harus berupa 16 digit angka.');
                         }
-
-                        // Cek apakah NIK sudah mengirim laporan dalam 20 hari terakhir
-                        $existingReport = \App\Models\Laporan::where('nik', $value)
-                            ->where('created_at', '>=', now()->subDays(20))
-                            ->first();
-
-                        if ($existingReport) {
-                            $fail('Anda hanya dapat mengirim laporan sekali setiap 20 hari.');
-                        }
                     },
                 ],
                 'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
@@ -44,11 +35,33 @@ class LaporanController extends Controller
                 'email' => 'nullable|email|max:255',
             ]);
 
-            // Mencegah inputan berbahaya (sanitize input)
-            $input = $request->except(['dokumen_pendukung']);
-            array_walk_recursive($input, function (&$value) {
-                $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-            });
+            // Cek jika ada laporan sebelumnya dalam 20 hari terakhir
+            $existingReport = \App\Models\Laporan::where('nik', $request->nik)
+                ->where('created_at', '>=', now()->subDays(20))
+                ->first();
+
+            if ($existingReport) {
+                // Jika laporan sebelumnya berstatus "Diproses", kembalikan response 200
+                if ($existingReport->status === 'Diproses') {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Anda sudah memiliki laporan yang sedang diproses.',
+                        'data' => [
+                            'nomor_tiket' => $existingReport->nomor_tiket,
+                            'status' => $existingReport->status,
+                            'judul' => $existingReport->judul,
+                            'detail' => $existingReport->detail,
+                        ]
+                    ], 200);
+                }
+
+                // Jika laporan sudah ada tetapi tidak sedang diproses, kembalikan error 422
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Anda hanya dapat mengirim laporan sekali setiap 20 hari.',
+                    'errors' => ['nik' => ['Anda hanya dapat mengirim laporan sekali setiap 20 hari.']]
+                ], 200);
+            }
 
             // Proses Upload Dokumen Pendukung
             $filePath = null;
@@ -70,6 +83,7 @@ class LaporanController extends Controller
                 'dokumen_pendukung' => $filePath,
             ]);
 
+            // Response Berhasil
             return response()->json([
                 'success' => true,
                 'message' => 'Laporan berhasil dikirim.',
@@ -78,16 +92,16 @@ class LaporanController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Tangkap error validasi dan kembalikan respons JSON
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'Validation error.',
                 'errors' => $e->errors(),
-            ], 422);
+            ], 200);
         } catch (\Exception $e) {
             // Tangkap error lainnya
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 
@@ -97,9 +111,9 @@ class LaporanController extends Controller
 
         if (!$laporan) {
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'message' => 'Laporan tidak ditemukan.',
-            ], 404);
+            ], 200);
         }
 
         return response()->json([
@@ -112,5 +126,42 @@ class LaporanController extends Controller
             'tanggal_kejadian' => $laporan->tanggal_kejadian,
             'tanggapan' => $laporan->tanggapan, // Tambahkan tanggapan
         ]);
+    }
+
+    // Method untuk validasi NIK
+    public function validateNik($nik)
+    {
+        // Cek apakah NIK valid (16 digit angka)
+        if (!preg_match('/^\d{16}$/', $nik)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Format NIK tidak valid. Harus berupa 16 digit angka.'
+            ], 200);
+        }
+
+        // Cari laporan terakhir berdasarkan NIK dalam 20 hari terakhir
+        $existingReport = Laporan::where('nik', $nik)
+            ->where('created_at', '>=', now()->subDays(20))
+            ->first();
+
+        if ($existingReport) {
+            // Jika laporan ditemukan
+            return response()->json([
+                'success' => true,
+                'message' => 'Laporan ditemukan.',
+                'data' => [
+                    'nomor_tiket' => $existingReport->nomor_tiket,
+                    'status' => $existingReport->status,
+                    'judul' => $existingReport->judul,
+                    'detail' => $existingReport->detail
+                ]
+            ], 200);
+        }
+
+        // Jika tidak ada laporan dalam 20 hari terakhir
+        return response()->json([
+            'success' => true,
+            'message' => 'Tidak ada laporan yang sedang diproses untuk NIK ini.'
+        ], 200);
     }
 }
