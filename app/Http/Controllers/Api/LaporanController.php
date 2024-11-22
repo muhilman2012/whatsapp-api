@@ -201,9 +201,11 @@ class LaporanController extends Controller
         }
 
         return response()->json([
-            'success' => true,
+            'success' => "true",
+            'message' => "Laporan ditemukan",
             'nomor_tiket' => $laporan->nomor_tiket,
             'status' => $laporan->status,
+            'nama_lengkap' => $laporan->nama_lengkap,
             'judul' => $laporan->judul,
             'detail' => $laporan->detail,
             'lokasi' => $laporan->lokasi,
