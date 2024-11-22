@@ -30,7 +30,7 @@ class LaporanController extends Controller
                 'detail' => 'required|string',
                 'lokasi' => 'nullable|string',
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
-                'dokumen_pendukung' => 'nullable|file|mimes:pdf|max:10240',
+                'dokumen_pendukung' => 'nullable', // Tidak hanya file, tetapi bisa berupa URL atau Base64
                 'nomor_pengadu' => 'nullable|string|max:15',
                 'email' => 'nullable|email|max:255',
             ]);
@@ -63,10 +63,46 @@ class LaporanController extends Controller
                 ], 200);
             }
 
-            // Proses Upload Dokumen Pendukung
+            // Validasi dan Proses Dokumen Pendukung
             $filePath = null;
-            if ($request->hasFile('dokumen_pendukung')) {
-                $filePath = $request->file('dokumen_pendukung')->store('dokumen');
+            if ($request->has('dokumen_pendukung')) {
+                $dokumen = $request->dokumen_pendukung;
+
+                if ($request->file('dokumen_pendukung')) {
+                    // Jika file diunggah (PDF)
+                    $filePath = $request->file('dokumen_pendukung')->store('dokumen');
+                } elseif (filter_var($dokumen, FILTER_VALIDATE_URL)) {
+                    // Jika URL valid (gambar publik)
+                    if (preg_match('/\.(jpg|jpeg|png)$/', $dokumen)) {
+                        $filePath = $dokumen; // Simpan URL langsung
+                    } else {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Dokumen pendukung harus berupa file PDF atau URL gambar valid (jpg, jpeg, png).'
+                        ], 200);
+                    }
+                } elseif ($this->isBase64($dokumen)) {
+                    // Jika format Base64
+                    $decodedFile = base64_decode($dokumen);
+
+                    if (!$decodedFile) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Format Base64 tidak valid.'
+                        ], 200);
+                    }
+
+                    // Simpan sebagai file di server
+                    $filename = 'dokumen_' . time() . '.jpg'; // Asumsikan format gambar (jpg)
+                    $filePath = 'dokumen/' . $filename;
+                    file_put_contents(storage_path('app/' . $filePath), $decodedFile);
+                } else {
+                    // Format tidak dikenal
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Dokumen pendukung harus berupa file PDF, URL gambar, atau Base64 valid.'
+                    ], 200);
+                }
             }
 
             // Buat Laporan Baru
@@ -105,29 +141,6 @@ class LaporanController extends Controller
         }
     }
 
-    public function getStatus($nomor_tiket)
-    {
-        $laporan = Laporan::where('nomor_tiket', $nomor_tiket)->first();
-
-        if (!$laporan) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Laporan tidak ditemukan.',
-            ], 200);
-        }
-
-        return response()->json([
-            'success' => true,
-            'nomor_tiket' => $laporan->nomor_tiket,
-            'status' => $laporan->status,
-            'judul' => $laporan->judul,
-            'detail' => $laporan->detail,
-            'lokasi' => $laporan->lokasi,
-            'tanggal_kejadian' => $laporan->tanggal_kejadian,
-            'tanggapan' => $laporan->tanggapan, // Tambahkan tanggapan
-        ]);
-    }
-
     // Method untuk validasi NIK
     public function validateNik($nik)
     {
@@ -163,5 +176,39 @@ class LaporanController extends Controller
             'success' => true,
             'message' => 'Tidak ada laporan yang sedang diproses untuk NIK ini.'
         ], 200);
+    }
+
+    // Helper untuk validasi Base64
+    private function isBase64($string)
+    {
+        $decoded = base64_decode($string, true);
+        if (!$decoded) {
+            return false;
+        }
+        $encoded = base64_encode($decoded);
+        return $encoded === $string;
+    }
+
+    public function getStatus($nomor_tiket)
+    {
+        $laporan = Laporan::where('nomor_tiket', $nomor_tiket)->first();
+
+        if (!$laporan) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Laporan tidak ditemukan.',
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => true,
+            'nomor_tiket' => $laporan->nomor_tiket,
+            'status' => $laporan->status,
+            'judul' => $laporan->judul,
+            'detail' => $laporan->detail,
+            'lokasi' => $laporan->lokasi,
+            'tanggal_kejadian' => $laporan->tanggal_kejadian,
+            'tanggapan' => $laporan->tanggapan, // Tambahkan tanggapan
+        ]);
     }
 }
