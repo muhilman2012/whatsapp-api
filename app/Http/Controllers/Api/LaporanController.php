@@ -94,7 +94,7 @@ class LaporanController extends Controller
 
                     // Simpan sebagai file di server
                     $filename = 'dokumen_' . time() . '.jpg'; // Asumsikan format gambar (jpg)
-                    $filePath = 'dokumen/' . $filename;
+                    $filePath =  $filename;
                     file_put_contents(storage_path('app/' . $filePath), $decodedFile);
                 } else {
                     // Format tidak dikenal
@@ -109,6 +109,8 @@ class LaporanController extends Controller
             $laporan = \App\Models\Laporan::create([
                 'nomor_tiket' => str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT),
                 'nama_lengkap' => $request->nama_lengkap,
+                'nomor_pengadu' => $request->nomor_pengadu,
+                'email' => $request->email,
                 'nik' => $request->nik,
                 'jenis_kelamin' => $request->jenis_kelamin,
                 'alamat_lengkap' => $request->alamat_lengkap,
