@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Laporan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class LaporanController extends Controller
 {
@@ -207,7 +208,7 @@ class LaporanController extends Controller
             'message' => "Laporan ditemukan",
             'nomor_tiket' => $laporan->nomor_tiket,
             'status' => $laporan->status,
-            'created_at' => $laporan->created_at,
+            'created_at' => Carbon::parse($laporan->created_at)->format('d/m/Y'),
             'nama_lengkap' => $laporan->nama_lengkap,
             'judul' => $laporan->judul,
             'detail' => $laporan->detail,
