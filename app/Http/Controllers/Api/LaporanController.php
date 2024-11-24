@@ -207,6 +207,7 @@ class LaporanController extends Controller
             'message' => "Laporan ditemukan",
             'nomor_tiket' => $laporan->nomor_tiket,
             'status' => $laporan->status,
+            'created_at' => $laporan->created_at,
             'nama_lengkap' => $laporan->nama_lengkap,
             'judul' => $laporan->judul,
             'detail' => $laporan->detail,

@@ -33,6 +33,10 @@ class Laporan extends Model
         'tanggal_kejadian' => 'date',
     ];
 
+    protected $attributes = [
+        'tanggapan' => 'Laporan pengaduan Anda dalam proses verifikasi & penelaahan, sesuai ketentuan akan dilakukan dalam 14 (empat belas) hari kerja sejak laporan lengkap diterima.',
+    ];
+
     /**
      * Accessor untuk format tanggal DD/MM/YYYY.
      */
