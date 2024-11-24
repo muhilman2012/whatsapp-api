@@ -96,7 +96,7 @@ class LaporanController extends Controller
                     // Simpan sebagai file di server
                     $filename = 'dokumen_' . time() . '.jpg'; // Asumsikan format gambar (jpg)
                     $filePath =  $filename;
-                    file_put_contents(storage_path('app/' . $filePath), $decodedFile);
+                    file_put_contents(storage_path('app/dokumen/' . $filePath), $decodedFile);
                 } else {
                     // Format tidak dikenal
                     return response()->json([
