@@ -120,6 +120,7 @@ class LaporanController extends Controller
                 'lokasi' => $request->lokasi,
                 'tanggal_kejadian' => $request->tanggal_kejadian,
                 'dokumen_pendukung' => $filePath,
+                'sumber_pengaduan' => 'whatsapp',
             ]);
 
             // Response Berhasil

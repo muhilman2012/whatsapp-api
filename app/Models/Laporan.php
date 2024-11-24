@@ -27,6 +27,7 @@ class Laporan extends Model
         'klasifikasi', // Field baru
         'kategori',    // Field baru
         'disposisi',   // Field baru
+        'sumber_pengaduan',
     ];
 
     protected $casts = [
