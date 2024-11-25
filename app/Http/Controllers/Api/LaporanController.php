@@ -31,7 +31,7 @@ class LaporanController extends Controller
                 'detail' => 'required|string',
                 'lokasi' => 'nullable|string',
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
-                'dokumen_pendukung' => 'nullable', // Tidak hanya file, tetapi bisa berupa URL atau Base64
+                'dokumen_pendukung' => 'nullable|string', // Validasi Base64 string
                 'nomor_pengadu' => 'nullable|string|max:15',
                 'email' => 'nullable|email|max:255',
             ]);
@@ -56,7 +56,7 @@ class LaporanController extends Controller
                     ], 200);
                 }
 
-                // Jika laporan sudah ada tetapi tidak sedang diproses, kembalikan error 422
+                // Jika laporan sudah ada tetapi tidak sedang diproses, kembalikan error
                 return response()->json([
                     'success' => true,
                     'message' => 'Anda hanya dapat mengirim laporan sekali setiap 20 hari.',
@@ -64,26 +64,15 @@ class LaporanController extends Controller
                 ], 200);
             }
 
-            // Validasi dan Proses Dokumen Pendukung
+            // Nomor tiket unik
+            $nomorTiket = str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
+
+            // Validasi dan Simpan Dokumen Pendukung
             $filePath = null;
-            if ($request->has('dokumen_pendukung')) {
+            if ($request->has('dokumen_pendukung') && $request->dokumen_pendukung) {
                 $dokumen = $request->dokumen_pendukung;
 
-                if ($request->file('dokumen_pendukung')) {
-                    // Jika file diunggah (PDF)
-                    $filePath = $request->file('dokumen_pendukung')->store('dokumen');
-                } elseif (filter_var($dokumen, FILTER_VALIDATE_URL)) {
-                    // Jika URL valid (gambar publik)
-                    if (preg_match('/\.(jpg|jpeg|png)$/', $dokumen)) {
-                        $filePath = $dokumen; // Simpan URL langsung
-                    } else {
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Dokumen pendukung harus berupa file PDF atau URL gambar valid (jpg, jpeg, png).'
-                        ], 200);
-                    }
-                } elseif ($this->isBase64($dokumen)) {
-                    // Jika format Base64
+                if ($this->isBase64($dokumen)) {
                     $decodedFile = base64_decode($dokumen);
 
                     if (!$decodedFile) {
@@ -93,22 +82,20 @@ class LaporanController extends Controller
                         ], 200);
                     }
 
-                    // Simpan sebagai file di server
-                    $filename = 'dokumen_' . time() . '.jpg'; // Asumsikan format gambar (jpg)
-                    $filePath =  $filename;
+                    // Simpan file di storage dengan nama berdasarkan nomor tiket
+                    $filePath = $nomorTiket . '.pdf';
                     file_put_contents(storage_path('app/dokumen/' . $filePath), $decodedFile);
                 } else {
-                    // Format tidak dikenal
                     return response()->json([
                         'success' => true,
-                        'message' => 'Dokumen pendukung harus berupa file PDF, URL gambar, atau Base64 valid.'
+                        'message' => 'Dokumen pendukung harus berupa Base64 valid.'
                     ], 200);
                 }
             }
 
             // Buat Laporan Baru
             $laporan = \App\Models\Laporan::create([
-                'nomor_tiket' => str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT),
+                'nomor_tiket' => $nomorTiket,
                 'nama_lengkap' => $request->nama_lengkap,
                 'nomor_pengadu' => $request->nomor_pengadu,
                 'email' => $request->email,
@@ -143,6 +130,13 @@ class LaporanController extends Controller
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 200);
         }
+    }
+
+    // Helper untuk validasi Base64
+    private function isBase64($string)
+    {
+        $decoded = base64_decode($string, true);
+        return $decoded !== false && base64_encode($decoded) === $string;
     }
 
     // Method untuk validasi NIK
@@ -180,17 +174,6 @@ class LaporanController extends Controller
             'success' => true,
             'message' => 'Tidak ada laporan yang sedang diproses untuk NIK ini.'
         ], 200);
-    }
-
-    // Helper untuk validasi Base64
-    private function isBase64($string)
-    {
-        $decoded = base64_decode($string, true);
-        if (!$decoded) {
-            return false;
-        }
-        $encoded = base64_encode($decoded);
-        return $encoded === $string;
     }
 
     public function getStatus($nomor_tiket)
