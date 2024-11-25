@@ -7,6 +7,7 @@ use App\Models\Laporan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class LaporanController extends Controller
 {
@@ -74,7 +75,6 @@ class LaporanController extends Controller
 
                 if ($this->isBase64($dokumen)) {
                     $decodedFile = base64_decode($dokumen);
-
                     if (!$decodedFile) {
                         return response()->json([
                             'success' => true,
@@ -83,8 +83,8 @@ class LaporanController extends Controller
                     }
 
                     // Simpan file di storage dengan nama berdasarkan nomor tiket
-                    $filePath = $nomorTiket . '.pdf';
-                    file_put_contents(storage_path('app/dokumen/' . $filePath), $decodedFile);
+                    $filePath = 'dokumen_pendukung/' . 'dokumen_pendukung_' . $nomorTiket . '.pdf';
+                    Storage::disk('local')->put($filePath, $decodedFile);
                 } else {
                     return response()->json([
                         'success' => true,
