@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class LaporanController extends Controller
 {
@@ -85,6 +86,8 @@ class LaporanController extends Controller
                     // Simpan file di storage dengan nama berdasarkan nomor tiket
                     $filePath = 'dokumen_pendukung/' . 'dokumen_pendukung_' . $nomorTiket . '.pdf';
                     Storage::disk('local')->put($filePath, $decodedFile);
+
+                    Log::info('Dokumen pendukung berhasil disimpan:', ['path' => $filePath]);
                 } else {
                     return response()->json([
                         'success' => true,
@@ -110,6 +113,8 @@ class LaporanController extends Controller
                 'sumber_pengaduan' => 'whatsapp',
             ]);
 
+            Log::info('Laporan berhasil disimpan:', ['laporan' => $laporan]);
+
             // Response Berhasil
             return response()->json([
                 'success' => true,
@@ -118,6 +123,7 @@ class LaporanController extends Controller
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Tangkap error validasi dan kembalikan respons JSON
+            Log::error('Validation Error:', $e->errors());
             return response()->json([
                 'success' => true,
                 'message' => 'Validation error.',
@@ -125,6 +131,7 @@ class LaporanController extends Controller
             ], 200);
         } catch (\Exception $e) {
             // Tangkap error lainnya
+            Log::error('Terjadi kesalahan:', ['exception' => $e->getMessage()]);
             return response()->json([
                 'success' => true,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
