@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 // Routes untuk laporan
 Route::middleware('auth:sanctum')->prefix('laporan')->group(function () {
     Route::post('/kirim', [LaporanController::class, 'store']); // Kirim laporan
-    Route::get('/status/{nomor_tiket}', [LaporanController::class, 'getStatus']); // Cek status laporan
+    Route::post('/status', [LaporanController::class, 'getStatus']); // Cek status laporan (bisa dengan nomor_tiket atau nik)
     Route::patch('/status/{nomor_tiket}', [LaporanController::class, 'updateStatus']); // Update status laporan
     Route::get('/validasi-nik/{nik}', [LaporanController::class, 'validateNik']); // Validasi NIK
 });

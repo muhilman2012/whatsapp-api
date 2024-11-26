@@ -33,7 +33,7 @@ class LaporanController extends Controller
                 'detail' => 'required|string',
                 'lokasi' => 'nullable|string',
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
-                'dokumen_pendukung' => 'nullable|string', // Validasi Base64 string
+                'dokumen_pendukung' => 'nullable|url', // Validasi sebagai URL
                 'nomor_pengadu' => 'nullable|string|max:15',
                 'email' => 'nullable|email|max:255',
             ]);
@@ -69,29 +69,16 @@ class LaporanController extends Controller
             // Nomor tiket unik
             $nomorTiket = str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
 
-            // Validasi dan Simpan Dokumen Pendukung
-            $filePath = null;
+            // Validasi URL dokumen pendukung
+            $dokumenPendukung = null;
             if ($request->has('dokumen_pendukung') && $request->dokumen_pendukung) {
-                $dokumen = $request->dokumen_pendukung;
-
-                if ($this->isBase64($dokumen)) {
-                    $decodedFile = base64_decode($dokumen);
-                    if (!$decodedFile) {
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Format Base64 tidak valid.'
-                        ], 200);
-                    }
-
-                    // Simpan file di storage dengan nama berdasarkan nomor tiket
-                    $filePath = 'dokumen_pendukung/' . 'dokumen_pendukung_' . $nomorTiket . '.pdf';
-                    Storage::disk('local')->put($filePath, $decodedFile);
-
-                    Log::info('Dokumen pendukung berhasil disimpan:', ['path' => $filePath]);
+                // Simpan langsung URL yang dikirim dari Qontak/WhatsApp
+                if (filter_var($request->dokumen_pendukung, FILTER_VALIDATE_URL)) {
+                    $dokumenPendukung = $request->dokumen_pendukung;
                 } else {
                     return response()->json([
                         'success' => true,
-                        'message' => 'Dokumen pendukung harus berupa Base64 valid.'
+                        'message' => 'Dokumen pendukung harus berupa URL valid.',
                     ], 200);
                 }
             }
@@ -109,10 +96,11 @@ class LaporanController extends Controller
                 'detail' => $request->detail,
                 'lokasi' => $request->lokasi,
                 'tanggal_kejadian' => $request->tanggal_kejadian,
-                'dokumen_pendukung' => $filePath,
+                'dokumen_pendukung' => $dokumenPendukung, // Menyimpan URL saja
                 'sumber_pengaduan' => 'whatsapp',
             ]);
 
+            // Log laporan berhasil disimpan
             Log::info('Laporan berhasil disimpan:', ['laporan' => $laporan]);
 
             // Response Berhasil
@@ -183,29 +171,73 @@ class LaporanController extends Controller
         ], 200);
     }
 
-    public function getStatus($nomor_tiket)
+    public function getStatus(Request $request)
     {
-        $laporan = Laporan::where('nomor_tiket', $nomor_tiket)->first();
+        try {
+            // Validasi Input
+            $request->validate([
+                'nomor_tiket' => 'nullable|string|max:7',
+                'nik' => 'nullable|digits:16',
+            ]);
 
-        if (!$laporan) {
+            // Pastikan setidaknya salah satu parameter diberikan
+            if (!$request->filled('nomor_tiket') && !$request->filled('nik')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Harap masukkan nomor tiket atau NIK untuk memeriksa status laporan.',
+                ], 200);
+            }
+
+            // Cari laporan berdasarkan nomor_tiket atau nik
+            $query = Laporan::query();
+
+            if ($request->filled('nomor_tiket')) {
+                $query->where('nomor_tiket', $request->nomor_tiket);
+            }
+
+            if ($request->filled('nik')) {
+                $query->where('nik', $request->nik);
+            }
+
+            $laporan = $query->first();
+
+            // Jika laporan tidak ditemukan
+            if (!$laporan) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak ditemukan dengan nomor tiket atau NIK yang diberikan.',
+                ], 200);
+            }
+
+            // Jika laporan ditemukan
             return response()->json([
                 'success' => true,
-                'message' => 'Laporan tidak ditemukan.',
+                'message' => 'Laporan ditemukan.',
+                'data' => [
+                    'nomor_tiket' => $laporan->nomor_tiket,
+                    'status' => $laporan->status,
+                    'created_at' => Carbon::parse($laporan->created_at)->format('d/m/Y'),
+                    'nama_lengkap' => $laporan->nama_lengkap,
+                    'judul' => $laporan->judul,
+                    'detail' => $laporan->detail,
+                    'lokasi' => $laporan->lokasi,
+                    'tanggal_kejadian' => $laporan->tanggal_kejadian,
+                    'tanggapan' => $laporan->tanggapan,
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Error Validasi
+            return response()->json([
+                'success' => true,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 200);
+        } catch (\Exception $e) {
+            // Error lainnya
+            return response()->json([
+                'success' => true,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 200);
         }
-
-        return response()->json([
-            'success' => "true",
-            'message' => "Laporan ditemukan",
-            'nomor_tiket' => $laporan->nomor_tiket,
-            'status' => $laporan->status,
-            'created_at' => Carbon::parse($laporan->created_at)->format('d/m/Y'),
-            'nama_lengkap' => $laporan->nama_lengkap,
-            'judul' => $laporan->judul,
-            'detail' => $laporan->detail,
-            'lokasi' => $laporan->lokasi,
-            'tanggal_kejadian' => $laporan->tanggal_kejadian,
-            'tanggapan' => $laporan->tanggapan, // Tambahkan tanggapan
-        ]);
     }
 }
