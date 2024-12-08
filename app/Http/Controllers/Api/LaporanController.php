@@ -17,34 +17,83 @@ class LaporanController extends Controller
         try {
             // Validasi Input
             $request->validate([
-                'nama_lengkap' => 'required|string|max:255',
+                'nama_lengkap' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    function ($attribute, $value, $fail) {
+                        // Validasi hanya boleh huruf, spasi, dan tanda hubung
+                        if (!preg_match('/^[\pL\s\-]+$/u', $value)) {
+                            $fail('Nama lengkap hanya boleh mengandung huruf, spasi, dan tanda hubung.');
+                        }
+                    },
+                ],
                 'nik' => [
                     'required',
                     'digits:16',
                     function ($attribute, $value, $fail) {
+                        // Validasi NIK harus berupa 16 digit angka
                         if (!preg_match('/^\d{16}$/', $value)) {
                             $fail('Format NIK tidak valid. Harus berupa 16 digit angka.');
                         }
                     },
                 ],
                 'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-                'alamat_lengkap' => 'required|string',
-                'judul' => 'required|string|max:255',
-                'detail' => 'required|string',
-                'lokasi' => 'nullable|string',
+                'alamat_lengkap' => [
+                    'required',
+                    'string',
+                    function ($attribute, $value, $fail) {
+                        // Validasi alamat tidak boleh mengandung karakter tidak valid
+                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                            $fail('Alamat lengkap tidak boleh mengandung karakter tidak valid.');
+                        }
+                    },
+                ],
+                'judul' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    function ($attribute, $value, $fail) {
+                        // Validasi judul tidak boleh mengandung karakter tidak valid
+                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                            $fail('Judul tidak boleh mengandung karakter tidak valid.');
+                        }
+                    },
+                ],
+                'detail' => 'required|string|max:10000',
+                'lokasi' => [
+                    'nullable',
+                    'string',
+                    function ($attribute, $value, $fail) {
+                        // Validasi lokasi tidak boleh mengandung karakter tidak valid
+                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                            $fail('Lokasi tidak boleh mengandung karakter tidak valid.');
+                        }
+                    },
+                ],
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
-                'dokumen_pendukung' => 'nullable|url', // Validasi sebagai URL
+                'dokumen_pendukung' => 'nullable|url', // Validasi dokumen sebagai URL
                 'nomor_pengadu' => 'nullable|string|max:15',
-                'email' => 'nullable|email|max:255',
+                'email' => [
+                    'nullable',
+                    'email',
+                    'max:255',
+                    function ($attribute, $value, $fail) {
+                        // Validasi format email
+                        if (filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+                            $fail('Email pengadu tidak valid.');
+                        }
+                    },
+                ],
             ]);
 
-            // Cek jika ada laporan sebelumnya dalam 20 hari terakhir
+            // Periksa apakah ada laporan sebelumnya dengan NIK yang sama dalam 20 hari terakhir
             $existingReport = \App\Models\Laporan::where('nik', $request->nik)
                 ->where('created_at', '>=', now()->subDays(20))
                 ->first();
 
             if ($existingReport) {
-                // Jika laporan sebelumnya berstatus "Diproses", kembalikan response 200
+                // Jika ada laporan sebelumnya dengan status "Diproses"
                 if ($existingReport->status === 'Diproses') {
                     return response()->json([
                         'success' => true,
@@ -54,36 +103,35 @@ class LaporanController extends Controller
                             'status' => $existingReport->status,
                             'judul' => $existingReport->judul,
                             'detail' => $existingReport->detail,
-                        ]
+                        ],
                     ], 200);
                 }
 
-                // Jika laporan sudah ada tetapi tidak sedang diproses, kembalikan error
+                // Jika laporan sebelumnya tidak dalam status "Diproses", tolak permintaan
                 return response()->json([
-                    'success' => true,
+                    'success' => false,
                     'message' => 'Anda hanya dapat mengirim laporan sekali setiap 20 hari.',
-                    'errors' => ['nik' => ['Anda hanya dapat mengirim laporan sekali setiap 20 hari.']]
+                    'errors' => ['nik' => ['Anda hanya dapat mengirim laporan sekali setiap 20 hari.']],
                 ], 200);
             }
 
-            // Nomor tiket unik
+            // Generate nomor tiket unik
             $nomorTiket = str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
 
-            // Validasi URL dokumen pendukung
+            // Validasi dokumen pendukung sebagai URL
             $dokumenPendukung = null;
             if ($request->has('dokumen_pendukung') && $request->dokumen_pendukung) {
-                // Simpan langsung URL yang dikirim dari Qontak/WhatsApp
                 if (filter_var($request->dokumen_pendukung, FILTER_VALIDATE_URL)) {
                     $dokumenPendukung = $request->dokumen_pendukung;
                 } else {
                     return response()->json([
-                        'success' => true,
-                        'message' => 'Dokumen pendukung harus berupa URL valid.',
+                        'success' => false,
+                        'message' => 'Dokumen pendukung harus berupa URL yang valid.',
                     ], 200);
                 }
             }
 
-            // Buat Laporan Baru
+            // Simpan laporan baru
             $laporan = \App\Models\Laporan::create([
                 'nomor_tiket' => $nomorTiket,
                 'nama_lengkap' => $request->nama_lengkap,
@@ -96,30 +144,36 @@ class LaporanController extends Controller
                 'detail' => $request->detail,
                 'lokasi' => $request->lokasi,
                 'tanggal_kejadian' => $request->tanggal_kejadian,
-                'dokumen_pendukung' => $dokumenPendukung, // Menyimpan URL saja
+                'dokumen_pendukung' => $dokumenPendukung, // Simpan URL dokumen
                 'sumber_pengaduan' => 'whatsapp',
             ]);
 
             // Log laporan berhasil disimpan
-            Log::info('Laporan berhasil disimpan:', ['laporan' => $laporan]);
+            \Log::info('Laporan berhasil disimpan:', [
+                'nomor_tiket' => $laporan->nomor_tiket,
+                'kategori' => $laporan->kategori,
+                'disposisi' => $laporan->disposisi,
+            ]);
 
-            // Response Berhasil
+            // Kembalikan respons sukses
             return response()->json([
                 'success' => true,
                 'message' => 'Laporan berhasil dikirim.',
                 'nomor_tiket' => $laporan->nomor_tiket,
-            ]);
+                'kategori' => $laporan->kategori,
+                'disposisi' => $laporan->disposisi,
+            ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Tangkap error validasi dan kembalikan respons JSON
-            Log::error('Validation Error:', $e->errors());
+            // Tangkap error validasi dan kembalikan respons
+            \Log::error('Error Validasi:', $e->errors());
             return response()->json([
                 'success' => true,
-                'message' => 'Validation error.',
+                'message' => 'Validasi gagal.',
                 'errors' => $e->errors(),
             ], 200);
         } catch (\Exception $e) {
             // Tangkap error lainnya
-            Log::error('Terjadi kesalahan:', ['exception' => $e->getMessage()]);
+            \Log::error('Error Saat Menyimpan Laporan:', ['exception' => $e->getMessage()]);
             return response()->json([
                 'success' => true,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
