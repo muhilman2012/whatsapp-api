@@ -44,7 +44,7 @@ class LaporanController extends Controller
                     'string',
                     function ($attribute, $value, $fail) {
                         // Validasi alamat tidak boleh mengandung karakter tidak valid
-                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                        if (preg_match('[\[\]{}<>]', $value)) {
                             $fail('Alamat lengkap tidak boleh mengandung karakter tidak valid.');
                         }
                     },
