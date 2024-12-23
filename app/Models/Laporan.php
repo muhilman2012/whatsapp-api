@@ -21,6 +21,8 @@ class Laporan extends Model
         'detail',
         'lokasi',
         'dokumen_pendukung',
+        'dokumen_ktp', // Tambahkan kolom baru di sini
+        'dokumen_skuasa', // Tambahkan kolom baru di sini
         'tanggal_kejadian',
         'status',
         'tanggapan',

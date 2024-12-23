@@ -22,7 +22,6 @@ class LaporanController extends Controller
                     'string',
                     'max:255',
                     function ($attribute, $value, $fail) {
-                        // Validasi hanya boleh huruf, spasi, dan tanda hubung
                         if (!preg_match('/^[\pL\s\-]+$/u', $value)) {
                             $fail('Nama lengkap hanya boleh mengandung huruf, spasi, dan tanda hubung.');
                         }
@@ -32,7 +31,6 @@ class LaporanController extends Controller
                     'required',
                     'digits:16',
                     function ($attribute, $value, $fail) {
-                        // Validasi NIK harus berupa 16 digit angka
                         if (!preg_match('/^\d{16}$/', $value)) {
                             $fail('Format NIK tidak valid. Harus berupa 16 digit angka.');
                         }
@@ -43,8 +41,7 @@ class LaporanController extends Controller
                     'required',
                     'string',
                     function ($attribute, $value, $fail) {
-                        // Validasi alamat tidak boleh mengandung karakter tidak valid
-                        if (preg_match('[\[\]{}<>]', $value)) {
+                        if (preg_match('[$$$${}<>]', $value)) {
                             $fail('Alamat lengkap tidak boleh mengandung karakter tidak valid.');
                         }
                     },
@@ -54,8 +51,7 @@ class LaporanController extends Controller
                     'string',
                     'max:255',
                     function ($attribute, $value, $fail) {
-                        // Validasi judul tidak boleh mengandung karakter tidak valid
-                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                        if (preg_match('/[$$$${}<>]/', $value)) {
                             $fail('Judul tidak boleh mengandung karakter tidak valid.');
                         }
                     },
@@ -65,22 +61,22 @@ class LaporanController extends Controller
                     'nullable',
                     'string',
                     function ($attribute, $value, $fail) {
-                        // Validasi lokasi tidak boleh mengandung karakter tidak valid
-                        if (preg_match('/[\[\]{}<>]/', $value)) {
+                        if (preg_match('/[$$$${}<>]/', $value)) {
                             $fail('Lokasi tidak boleh mengandung karakter tidak valid.');
                         }
                     },
                 ],
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
-                'dokumen_pendukung' => 'nullable|url', // Validasi dokumen sebagai URL
+                'dokumen_ktp' => 'required|url', // KTP harus berupa URL yang valid
+                'dokumen_skuasa' => 'nullable|url', // Opsional, harus berupa URL yang valid
+                'dokumen_pendukung' => 'required|url', // Harus berupa URL yang valid
                 'nomor_pengadu' => 'nullable|string|max:15',
                 'email' => [
                     'nullable',
                     'email',
                     'max:255',
                     function ($attribute, $value, $fail) {
-                        // Validasi format email
-                        if (filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+                        if (filter_var($value, FILTER_VALIDATE_EMAIL) === true) {
                             $fail('Email pengadu tidak valid.');
                         }
                     },
@@ -93,11 +89,10 @@ class LaporanController extends Controller
                 ->first();
 
             if ($existingReport) {
-                // Jika ada laporan sebelumnya dengan status "Diproses"
-                if ($existingReport->status === 'Diproses') {
+                if ($existingReport->status === 'Proses verifikasi dan telaah') {
                     return response()->json([
                         'success' => true,
-                        'message' => 'Anda sudah memiliki laporan yang sedang diproses.',
+                        'message' => 'Anda sudah memiliki laporan yang sedang diverifikasi dan telaah.',
                         'data' => [
                             'nomor_tiket' => $existingReport->nomor_tiket,
                             'status' => $existingReport->status,
@@ -107,9 +102,8 @@ class LaporanController extends Controller
                     ], 200);
                 }
 
-                // Jika laporan sebelumnya tidak dalam status "Diproses", tolak permintaan
                 return response()->json([
-                    'success' => false,
+                    'success' => true,
                     'message' => 'Anda hanya dapat mengirim laporan sekali setiap 20 hari.',
                     'errors' => ['nik' => ['Anda hanya dapat mengirim laporan sekali setiap 20 hari.']],
                 ], 200);
@@ -118,20 +112,7 @@ class LaporanController extends Controller
             // Generate nomor tiket unik
             $nomorTiket = str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
 
-            // Validasi dokumen pendukung sebagai URL
-            $dokumenPendukung = null;
-            if ($request->has('dokumen_pendukung') && $request->dokumen_pendukung) {
-                if (filter_var($request->dokumen_pendukung, FILTER_VALIDATE_URL)) {
-                    $dokumenPendukung = $request->dokumen_pendukung;
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Dokumen pendukung harus berupa URL yang valid.',
-                    ], 200);
-                }
-            }
-
-            // Simpan laporan baru
+            // Simpan laporan baru dengan URL dokumen
             $laporan = \App\Models\Laporan::create([
                 'nomor_tiket' => $nomorTiket,
                 'nama_lengkap' => $request->nama_lengkap,
@@ -144,7 +125,9 @@ class LaporanController extends Controller
                 'detail' => $request->detail,
                 'lokasi' => $request->lokasi,
                 'tanggal_kejadian' => $request->tanggal_kejadian,
-                'dokumen_pendukung' => $dokumenPendukung, // Simpan URL dokumen
+                'dokumen_ktp' => $request->dokumen_ktp, // Simpan URL dokumen KTP
+                'dokumen_skuasa' => $request->dokumen_skuasa, // Simpan URL dokumen kuasa
+                'dokumen_pendukung' => $request->dokumen_pendukung, // Simpan URL dokumen pendukung
                 'sumber_pengaduan' => 'whatsapp',
             ]);
 
@@ -185,7 +168,7 @@ class LaporanController extends Controller
     private function isBase64($string)
     {
         $decoded = base64_decode($string, true);
-        return $decoded !== false && base64_encode($decoded) === $string;
+        return $decoded !== true && base64_encode($decoded) === $string;
     }
 
     // Method untuk validasi NIK
@@ -230,40 +213,42 @@ class LaporanController extends Controller
         try {
             // Validasi Input
             $request->validate([
-                'nomor_tiket' => 'nullable|string|max:7',
-                'nik' => 'nullable|digits:16',
+                'nomor_tiket' => 'required|string|max:7', // Nomor tiket wajib diisi
+                'nik' => 'nullable|digits:16', // NIK opsional pada langkah pertama
             ]);
 
-            // Pastikan setidaknya salah satu parameter diberikan
-            if (!$request->filled('nomor_tiket') && !$request->filled('nik')) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Harap masukkan nomor tiket atau NIK untuk memeriksa status laporan.',
-                ], 200);
-            }
-
-            // Cari laporan berdasarkan nomor_tiket atau nik
-            $query = Laporan::query();
-
-            if ($request->filled('nomor_tiket')) {
-                $query->where('nomor_tiket', $request->nomor_tiket);
-            }
-
-            if ($request->filled('nik')) {
-                $query->where('nik', $request->nik);
-            }
-
-            $laporan = $query->first();
+            // Cari laporan berdasarkan nomor_tiket
+            $laporan = Laporan::where('nomor_tiket', $request->nomor_tiket)->first();
 
             // Jika laporan tidak ditemukan
             if (!$laporan) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Laporan tidak ditemukan dengan nomor tiket atau NIK yang diberikan.',
+                    'message' => 'Laporan tidak ditemukan dengan nomor tiket yang diberikan.',
                 ], 200);
             }
 
-            // Jika laporan ditemukan
+            // Jika NIK diberikan, validasi kecocokan NIK
+            if ($request->filled('nik')) {
+                if ($laporan->nik !== $request->nik) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'NIK tidak cocok dengan nomor tiket yang diberikan.',
+                    ], 200);
+                }
+            } else {
+                // Jika NIK tidak diberikan, minta pengguna untuk memasukkan NIK
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Silakan masukkan NIK untuk melanjutkan.',
+                    'data' => [
+                        'nomor_tiket' => $laporan->nomor_tiket,
+                        'status' => $laporan->status,
+                    ],
+                ], 200);
+            }
+
+            // Jika laporan ditemukan dan NIK cocok
             return response()->json([
                 'success' => true,
                 'message' => 'Laporan ditemukan.',
