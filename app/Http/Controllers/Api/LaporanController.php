@@ -68,6 +68,7 @@ class LaporanController extends Controller
                 ],
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
                 'dokumen_ktp' => 'required|url', // KTP harus berupa URL yang valid
+                'dokumen_kk' => 'required|url', // KK harus berupa URL yang valid
                 'dokumen_skuasa' => 'nullable|url', // Opsional, harus berupa URL yang valid
                 'dokumen_pendukung' => 'required|url', // Harus berupa URL yang valid
                 'nomor_pengadu' => 'nullable|string|max:15',
@@ -126,6 +127,7 @@ class LaporanController extends Controller
                 'lokasi' => $request->lokasi,
                 'tanggal_kejadian' => $request->tanggal_kejadian,
                 'dokumen_ktp' => $request->dokumen_ktp, // Simpan URL dokumen KTP
+                'dokumen_kk' => $request->dokumen_kk, // Simpan URL dokumen KK
                 'dokumen_skuasa' => $request->dokumen_skuasa, // Simpan URL dokumen kuasa
                 'dokumen_pendukung' => $request->dokumen_pendukung, // Simpan URL dokumen pendukung
                 'sumber_pengaduan' => 'whatsapp',
