@@ -68,7 +68,7 @@ class LaporanController extends Controller
                 ],
                 'tanggal_kejadian' => 'nullable|date_format:d/m/Y',
                 'dokumen_ktp' => 'required|url', // KTP harus berupa URL yang valid
-                'dokumen_kk' => 'required|url', // KK harus berupa URL yang valid
+                'dokumen_kk' => 'nullable|url', // KK harus berupa URL yang valid
                 'dokumen_skuasa' => 'nullable|url', // Opsional, harus berupa URL yang valid
                 'dokumen_pendukung' => 'required|url', // Harus berupa URL yang valid
                 'nomor_pengadu' => 'nullable|string|max:15',
