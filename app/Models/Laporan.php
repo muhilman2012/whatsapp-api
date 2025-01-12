@@ -31,6 +31,7 @@ class Laporan extends Model
         'kategori',    // Field baru
         'disposisi',   // Field baru
         'sumber_pengaduan',
+        'complaint_id'
     ];
 
     protected $casts = [
