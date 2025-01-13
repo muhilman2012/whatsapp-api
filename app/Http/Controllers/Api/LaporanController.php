@@ -208,11 +208,11 @@ class LaporanController extends Controller
             'classification_id' => 6,
             'disposition_id' => 151345,
             'category_id' => 15, //apakah boleh bebas
-            'priority_program_id' => 3,
+            'priority_program_id' => null,
             'location_id' => 34, //apakah boleh bebas (34 Nasional)
-            'community_id' => 16, //apakah boleh bebas
+            'community_id' => null, //apakah boleh bebas
             'date_of_incident' => $laporan->tanggal_kejadian,
-            'copy_externals' => '[275]', // Apakah ini harus?
+            'copy_externals' => null, // Apakah ini harus?
             'info_disposition' => 'Ini keterangan disposisi.', 
             'info_attachments' => '[66]',
             'tags_raw' => '#pengaduanwhatsapp', //apakah boleh bebas
