@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Laporan;
+use App\Models\Log;
+use App\Models\admins;
+use App\Models\Assignment;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
 class LaporanController extends Controller
@@ -144,14 +147,21 @@ class LaporanController extends Controller
                 ]);
             }
 
-            // Log laporan berhasil disimpan  
-            Log::info('Laporan berhasil disimpan:', [  
+            // Log laporan berhasil disimpan menggunakan logger
+            logger()->info('Laporan berhasil disimpan:', [  
                 'nomor_tiket' => $laporan->nomor_tiket,  
                 'kategori' => $laporan->kategori,  
                 'disposisi' => $laporan->disposisi,
                 'complaint_id' => $laporan->complaint_id,
             ]);
   
+            // Menyimpan log aktivitas
+            Log::create([
+                'laporan_id' => $laporan->id,
+                'activity' => "Laporan baru dari Whatsapp",
+                'user_id' => auth()->user()->id,
+            ]);
+
             // Kembalikan respons sukses  
             return response()->json([  
                 'success' => true,  
@@ -164,7 +174,7 @@ class LaporanController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {  
             // Tangkap error validasi dan kembalikan respons  
-            Log::error('Error Validasi:', $e->errors());  
+            logger()->info('Error Validasi:', $e->errors());  
             return response()->json([  
                 'success' => true,  
                 'message' => 'Validasi gagal.',  
@@ -172,7 +182,7 @@ class LaporanController extends Controller
             ], 200);
         } catch (\Exception $e) {  
             // Tangkap error lainnya  
-            Log::error('Error Saat Menyimpan Laporan:', ['exception' => $e->getMessage()]);  
+            logger()->info('Error Saat Menyimpan Laporan:', ['exception' => $e->getMessage()]);  
             return response()->json([  
                 'success' => true,  
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),  
@@ -236,7 +246,7 @@ class LaporanController extends Controller
                 $responseData = $response->json();
 
                 // Tangani jika API mengembalikan error
-                Log::error('Mengirim Data ke API External Berhasil.', [
+                logger()->info('Mengirim Data ke API External Berhasil.', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
@@ -247,7 +257,7 @@ class LaporanController extends Controller
                 ];
             } else {
                 // Tangani jika API mengembalikan error
-                Log::error('API eksternal mengembalikan error.', [
+                logger()->info('API eksternal mengembalikan error.', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
@@ -259,7 +269,7 @@ class LaporanController extends Controller
             }
         } catch (\Exception $e) {
             // Tangani jika ada kesalahan saat mengirim permintaan
-            Log::error('Terjadi kesalahan saat mengirim data ke API eksternal.', [
+            logger()->info('Terjadi kesalahan saat mengirim data ke API eksternal.', [
                 'exception' => $e->getMessage(),
             ]);
     
@@ -384,5 +394,118 @@ class LaporanController extends Controller
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),  
             ], 200);  
         }  
+    }
+
+    public function kirimDokumenTambahan(Request $request)
+    {
+        try {
+            // Validasi input
+            $request->validate([
+                'nomor_tiket' => 'required|string|max:7', // Nomor tiket wajib diisi
+                'dokumen_tambahan' => 'required|url', // Harus berupa URL yang valid
+            ]);
+
+            // Cari laporan berdasarkan nomor tiket
+            $laporan = Laporan::where('nomor_tiket', $request->nomor_tiket)->first();
+
+            // Jika laporan tidak ditemukan
+            if (!$laporan) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak ditemukan dengan nomor tiket yang diberikan.',
+                ], 200);
+            }
+
+            // Periksa apakah dokumen tambahan sudah terisi
+            if ($laporan->dokumen_tambahan) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Anda sudah mengirim Dokumen Tambahan.',
+                ], 200);
+            }
+
+            // Periksa apakah status laporan adalah "Menunggu kelengkapan Data dukung dari Pelapor"
+            if ($laporan->status !== 'Menunggu kelengkapan Data dukung dari Pelapor') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak berada dalam status yang sesuai untuk mengirim dokumen tambahan.',
+                ], 200);
+            }
+
+            // Simpan dokumen tambahan
+            $laporan->dokumen_tambahan = $request->dokumen_tambahan;
+            $laporan->save();
+
+            // Log dokumen tambahan berhasil dikirim
+            logger()->info('Dokumen tambahan berhasil dikirim', [
+                'nomor_tiket' => $laporan->nomor_tiket,
+                'dokumen_tambahan' => $laporan->dokumen_tambahan,
+            ]);
+
+            // Menyimpan log aktivitas
+            Log::create([
+                'laporan_id' => $laporan->id,
+                'activity' => "Pengadu mengirim Dokumen Tambahan Baru",
+                'user_id' => auth()->user()->id,
+            ]);
+
+            // Mengambil ID analis yang ditugaskan pada laporan ini
+            $assignments = Assignment::where('laporan_id', $laporan->id)->get();
+            
+            // Kirimkan notifikasi kepada analis yang terlibat
+            foreach ($assignments as $assignment) {
+                $analis = $assignment->assignedTo;
+
+                // Kirim notifikasi kepada analis
+                Notification::create([
+                    'assigner_id' => auth()->user()->id,  // ID pengirim
+                    'assignee_id' => $analis->id_admins,  // ID penerima (analis)
+                    'laporan_id' => $laporan->id,  // ID laporan
+                    'message' => 'Pengadu telah mengirim Dokumen Baru',
+                    'is_read' => false,  // Notifikasi belum dibaca
+                ]);
+            }
+
+            // Kirimkan notifikasi ke asdep yang meng-assign analis tersebut
+            foreach ($assignments as $assignment) {
+                $assignedBy = $assignment->assignedBy; // Ambil asdep yang meng-assign
+
+                if ($assignedBy && $assignedBy->role === 'asdep') { // Pastikan yang meng-assign adalah asdep
+                    // Kirim notifikasi kepada asdep
+                    Notification::create([
+                        'assigner_id' => auth()->user()->id,  // ID pengirim
+                        'assignee_id' => $assignedBy->id_admins,  // ID penerima (asdep)
+                        'laporan_id' => $laporan->id,  // ID laporan
+                        'message' => 'Pengadu telah mengirim Dokumen Baru',
+                        'is_read' => false,  // Notifikasi belum dibaca
+                    ]);
+                }
+            }
+
+            // Kembalikan respons sukses
+            return response()->json([
+                'success' => true,
+                'message' => 'Dokumen tambahan berhasil dikirim.',
+                'data' => [
+                    'nomor_tiket' => $laporan->nomor_tiket,
+                    'dokumen_tambahan' => $laporan->dokumen_tambahan,
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Tangkap error validasi dan kembalikan respons
+            return response()->json([
+                'success' => true,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 200);
+        } catch (\Exception $e) {
+            // Tangkap error lainnya
+            logger()->info('Error Saat Mengirim Dokumen Tambahan:', ['exception' => $e->getMessage()]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 200);
+        }
     }
 }
