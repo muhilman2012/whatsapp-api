@@ -425,7 +425,7 @@ class LaporanController extends Controller
             }
 
             // Periksa apakah status laporan adalah "Menunggu kelengkapan Data dukung dari Pelapor"
-            if ($laporan->status !== 'Menunggu kelengkapan Data dukung dari Pelapor') {
+            if ($laporan->status !== 'Menunggu kelengkapan data dukung dari Pelapor') {
                 return response()->json([
                     'success' => true,
                     'message' => 'Laporan tidak berada dalam status yang sesuai untuk mengirim dokumen tambahan.',
