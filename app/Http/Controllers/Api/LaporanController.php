@@ -508,4 +508,54 @@ class LaporanController extends Controller
             ], 200);
         }
     }
+
+    public function cekTiketUntukDokumen(Request $request)
+    {
+        try {
+            // Validasi input
+            $request->validate([
+                'nomor_tiket' => 'required|string|max:7', // Nomor tiket wajib diisi
+            ]);
+
+            // Cari laporan berdasarkan nomor tiket
+            $laporan = Laporan::where('nomor_tiket', $request->nomor_tiket)->first();
+
+            // Jika laporan tidak ditemukan
+            if (!$laporan) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak ditemukan dengan nomor tiket yang diberikan.',
+                ], 200);
+            }
+
+            // Periksa apakah status laporan adalah "Menunggu kelengkapan data dukung dari Pelapor"
+            if ($laporan->status !== 'Menunggu kelengkapan data dukung dari Pelapor') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak berada dalam status yang sesuai untuk mengirim dokumen tambahan.',
+                ], 200);
+            }
+
+            // Jika status laporan sesuai
+            return response()->json([
+                'success' => true,
+                'message' => 'Nomor tiket ini diperbolehkan untuk mengirim dokumen tambahan.',
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Tangkap error validasi dan kembalikan respons
+            return response()->json([
+                'success' => true,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 200);
+        } catch (\Exception $e) {
+            // Tangkap error lainnya
+            logger()->info('Error Saat Mengecek Tiket:', ['exception' => $e->getMessage()]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 200);
+        }
+    }
 }

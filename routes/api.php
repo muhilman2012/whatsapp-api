@@ -29,4 +29,5 @@ Route::middleware('auth:sanctum')->prefix('laporan')->group(function () {
     Route::patch('/status/{nomor_tiket}', [LaporanController::class, 'updateStatus']); // Update status laporan
     Route::get('/validasi-nik/{nik}', [LaporanController::class, 'validateNik']); // Validasi NIK
     Route::post('/dokumen-tambahan', [LaporanController::class, 'kirimDokumenTambahan']); // Kirim dokumen tambahan
+    Route::post('/cek-tiket-dokumen', [LaporanController::class, 'cekTiketUntukDokumen']);
 });
