@@ -435,22 +435,11 @@ class LaporanController extends Controller
             // Simpan dokumen tambahan
             $laporan->dokumen_tambahan = $request->dokumen_tambahan;
 
-            // Cek apakah 15 hari telah berlalu sejak status berubah menjadi "Menunggu kelengkapan data dukung dari Pelapor"
-            $tanggalStatusDiubah = $laporan->updated_at;
-            $tanggalSekarang = now();
-            $selisihHari = $tanggalSekarang->diffInDays($tanggalStatusDiubah);
+            // Langsung update status dan tanggapan
+            $laporan->status = 'Proses verifikasi dan telaah';
+            $laporan->tanggapan = 'Laporan pengaduan Saudara dalam proses verifikasi & penelaahan.';
 
-            if ($selisihHari <= 15) {
-                // Dokumen dikirim dalam 15 hari, update status dan tanggapan
-                $laporan->status = 'Proses verifikasi dan telaah';
-                $laporan->tanggapan = 'Laporan pengaduan Saudara dalam proses verifikasi & penelaahan.';
-            } elseif ($selisihHari > 15 && !$laporan->dokumen_tambahan) {
-                // Jika lebih dari 15 hari dan dokumen belum dikirim
-                $laporan->status = 'Penanganan Selesai';
-                $laporan->tanggapan = 'Pengaduan diarsipkan karena pengadu dalam jangka waktu 10 (sepuluh) hari kerja tidak memberikan kelengkapan data.';
-            }
-
-            // Simpan perubahan status dan tanggapan
+            // Simpan perubahan
             $laporan->save();
 
             // Log dokumen tambahan berhasil dikirim
@@ -468,7 +457,7 @@ class LaporanController extends Controller
 
             // Mengambil ID analis yang ditugaskan pada laporan ini
             $assignments = Assignment::where('laporan_id', $laporan->id)->get();
-            
+
             // Kirimkan notifikasi kepada analis yang terlibat
             foreach ($assignments as $assignment) {
                 $analis = $assignment->assignedTo;
