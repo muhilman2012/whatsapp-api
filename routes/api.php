@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\LaporanController;
+use App\Http\Controllers\Api\IdentitasController;
 use App\Http\Controllers\AuthController;
 
 /*
@@ -30,4 +31,5 @@ Route::middleware('auth:sanctum')->prefix('laporan')->group(function () {
     Route::get('/validasi-nik/{nik}', [LaporanController::class, 'validateNik']); // Validasi NIK
     Route::post('/dokumen-tambahan', [LaporanController::class, 'kirimDokumenTambahan']); // Kirim dokumen tambahan
     Route::post('/cek-tiket-dokumen', [LaporanController::class, 'cekTiketUntukDokumen']);
+    Route::post('/identitas', [IdentitasController::class, 'store']);
 });
