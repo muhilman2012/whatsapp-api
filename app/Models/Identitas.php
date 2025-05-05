@@ -16,5 +16,6 @@ class Identitas extends Model
         'alamat_lengkap',
         'foto_ktp',
         'foto_ktp_url',
+        'is_filled',
     ];
 }

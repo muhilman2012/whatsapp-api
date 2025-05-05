@@ -41,6 +41,7 @@ class IdentitasController extends Controller
                 'alamat_lengkap' => $request->alamat_lengkap,
                 'foto_ktp' => $path,
                 'foto_ktp_url' => $url,
+                'is_filled' => false,
             ]);
 
             return response()->json([
