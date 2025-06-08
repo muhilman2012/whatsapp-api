@@ -310,6 +310,14 @@ class LaporanController extends Controller
                 ], 200);
             }
 
+            // Periksa apakah status laporan adalah "Menunggu kelengkapan Data dukung dari Pelapor"Add commentMore actions
+            if ($laporan->status !== 'Menunggu kelengkapan data dukung dari Pelapor') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Laporan tidak berada dalam status yang sesuai untuk mengirim dokumen tambahan.',
+                ], 200);
+            }
+            
             // Simpan dokumen tambahan
             $webPath = $this->simpanDokumenBase64($request->dokumen_tambahan, $laporan->nomor_tiket, 'tambahan_' . now()->format('Ymd_His'));
 
