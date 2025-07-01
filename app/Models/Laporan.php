@@ -147,6 +147,8 @@ class Laporan extends Model
         'TNI' => ['tni'],
         'Polri' => ['polri'],
         'Perpajakan' => ['pajak', 'tax'],
+        'Infrastruktur' => ['infrastruktur', 'jalan', 'jembatan', 'transportasi', 'bendungan', 'pelabuhan', 'bandara', 'stasiun'],
+        'Pembangunan Kewilayahan' => ['transmigrasi', 'pemukiman'],
         'Lainnya' => [],
     ];
 
@@ -200,6 +202,8 @@ class Laporan extends Model
         'TNI' => ['tni'],
         'Polri' => ['polri'],
         'Perpajakan' => ['pajak', 'tax'],
+        'Infrastruktur' => ['infrastruktur', 'jalan', 'jembatan', 'transportasi', 'bendungan', 'pelabuhan', 'bandara', 'stasiun'],
+        'Pembangunan Kewilayahan' => ['transmigrasi', 'pemukiman'],
         'Lainnya' => [],
     ];
 
@@ -214,7 +218,7 @@ class Laporan extends Model
     }
 
     private static $kategoriDeputi = [
-        'deputi_1' => ['Ekonomi dan Keuangan', 'Lingkungan Hidup dan Kehutanan', 'Pekerjaan Umum dan Penataan Ruang', 'Pertanian dan Peternakan', 'Pemulihan Ekonomi Nasional', 'Energi dan Sumber Daya Alam', 'Mudik', 'Perairan', 'Perhubungan', 'Teknologi Informasi dan Komunikasi', 'Perlindungan Konsumen', 'Pariwisata dan Ekonomi Kreatif', 'Industri dan Perdagangan', 'Perumahan', 'Perpajakan'],
+        'deputi_1' => ['Ekonomi dan Keuangan', 'Lingkungan Hidup dan Kehutanan', 'Pekerjaan Umum dan Penataan Ruang', 'Pertanian dan Peternakan', 'Pemulihan Ekonomi Nasional', 'Energi dan Sumber Daya Alam', 'Mudik', 'Perairan', 'Perhubungan', 'Teknologi Informasi dan Komunikasi', 'Perlindungan Konsumen', 'Pariwisata dan Ekonomi Kreatif', 'Industri dan Perdagangan', 'Perumahan', 'Perpajakan', 'Infrastruktur', 'Pembangunan Kewilayahan'],
         'deputi_2' => ['Agama', 'Corona Virus', 'Kesehatan', 'Kesetaraan Gender dan Sosial Inklusif', 'Pembangunan Desa, Daerah Tertinggal, dan Transmigrasi', 'Pendidikan dan Kebudayaan', 'Sosial dan Kesejahteraan', 'Kekerasan di Satuan Pendidikan (Sekolah, Kampus, Lembaga Khusus)', 'Ketenagakerjaan', 'Pemberdayaan Masyarakat, Koperasi, dan UMKM', 'Kepemudaan dan Olahraga', 'Keluarga Berencana', 'Penanggulangan Bencana', 'Pembangunan Keluarga'],
         'deputi_3' => ['Ketentraman, Ketertiban Umum, dan Perlindungan Masyarakat','Politik dan Hukum', 'Politisasi ASN', 'SP4N Lapor', 'Netralitas ASN', 'Pencegahan dan Pemberantasan Penyalahgunaan dan Peredaran Gelap Narkotika dan Prekursor Narkotika (P4GN)', 'Manajemen ASN', 'Luar Negeri', 'Pertanahan', 'Daerah Perbatasan', 'Pelayanan Publik', 'TNI', 'Polri', 'Kependudukan'],
         'deputi_4' => ['Topik Khusus', 'Topik Lainnya', 'Bantuan Masyarakat'],

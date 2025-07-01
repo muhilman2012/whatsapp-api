@@ -195,9 +195,10 @@ class LaporanController extends Controller
             ], 200);  
         }  
   
-        // Cari laporan terakhir berdasarkan NIK dalam 20 hari terakhir  
+        // Cari laporan terakhir berdasarkan NIK dengan status selain Penanganan Selesai
         $existingReport = Laporan::where('nik', $nik)  
             ->where('status', '!=', 'Penanganan Selesai')
+            //->where('created_at', '>=', now()->subDays(20))   // Cari laporan terakhir berdasarkan NIK dalam 20 hari terakhir   
             ->first();  
   
         if ($existingReport) {  
