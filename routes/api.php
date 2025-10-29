@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\IdentitasController;
+use App\Http\Controllers\Api\MigrationController;
 use App\Http\Controllers\AuthController;
 
 /*
@@ -32,4 +33,10 @@ Route::middleware('auth:sanctum')->prefix('laporan')->group(function () {
     Route::post('/dokumen-tambahan', [LaporanController::class, 'kirimDokumenTambahan']); // Kirim dokumen tambahan
     Route::post('/cek-tiket-dokumen', [LaporanController::class, 'cekTiketUntukDokumen']);
     Route::post('/identitas', [IdentitasController::class, 'store']);
+});
+
+Route::middleware('auth:sanctum')->prefix('migration')->group(function () {
+    Route::get('/admins', [MigrationController::class, 'getAdmins']); 
+    Route::get('/reports', [MigrationController::class, 'getReports']);
+    Route::get('/assignments', [MigrationController::class, 'getAssignments']);
 });
