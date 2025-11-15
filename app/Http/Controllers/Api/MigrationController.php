@@ -89,7 +89,8 @@ class MigrationController extends Controller
 
         $assignments = Assignment::with([
             'assignedTo:id_admins,email', 
-            'assignedBy:id_admins,email' 
+            'assignedBy:id_admins,email',
+            'laporan:id,nomor_tiket'
         ])
         ->select([
             'laporan_id', // ID Laporan V1 (Wajib untuk lookup di V2)
@@ -106,9 +107,11 @@ class MigrationController extends Controller
         $assignments->getCollection()->transform(function ($item) {
             $analisEmail = $item->assignedTo->email ?? null;
             $assignedByEmail = $item->assignedBy->email ?? null;
+            $nomorTiket = $item->laporan->nomor_tiket ?? null;
 
             return [
-                'laporan_id' => $item->laporan_id, 
+                'laporan_id' => $item->laporan_id,
+                'nomor_tiket' => $nomorTiket,
                 'notes' => $item->notes,
                 // Menggunakan format standar DB V1
                 'created_at' => $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : null, 
@@ -133,7 +136,7 @@ class MigrationController extends Controller
     {
         $limit = $request->get('limit', self::LIMIT);
 
-        $logs = Log::with(['user:id_admins,email']) 
+        $logs = Log::with(['user:id_admins,email', 'laporan:id,nomor_tiket']) 
             ->select([
                 'id',              // ID Log V1
                 'laporan_id',      // 🔥 ID Laporan V1 (Wajib untuk lookup Report V2)
@@ -149,6 +152,7 @@ class MigrationController extends Controller
         $logs->getCollection()->transform(function ($item) {
             
             $userEmail = $item->user->email ?? null;
+            $nomorTiket = $item->laporan->nomor_tiket ?? null;
 
             return [
                 'log_id_v1' => $item->id,
@@ -156,6 +160,7 @@ class MigrationController extends Controller
                 'action_description_v1' => $item->activity,
                 
                 // ID Laporan V1 untuk lookup Report V2
+                'nomor_tiket' => $nomorTiket,
                 'laporan_id_v1' => $item->laporan_id, 
                 
                 // Format created_at tanpa konversi timezone
