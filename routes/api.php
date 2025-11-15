@@ -39,4 +39,5 @@ Route::middleware('auth:sanctum')->prefix('migration')->group(function () {
     Route::get('/admins', [MigrationController::class, 'getAdmins']); 
     Route::get('/reports', [MigrationController::class, 'getReports']);
     Route::get('/assignments', [MigrationController::class, 'getAssignments']);
+    Route::get('/logs', [MigrationController::class, 'getLogs']);
 });
