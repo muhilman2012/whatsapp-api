@@ -56,7 +56,7 @@ class MigrationController extends Controller
             'nomor_tiket', 
             'judul', 
             'detail', 
-            'created_at', 
+            'created_at',
             'tanggal_kejadian', 
             'lokasi', 
             'sumber_pengaduan', 
@@ -74,6 +74,16 @@ class MigrationController extends Controller
         ])
         ->orderBy('id', 'asc')
         ->paginate($limit, ['*'], 'page', $request->get('page')); 
+
+        $laporans->getCollection()->transform(function ($item) {
+            $data = $item->toArray();
+            
+            $data['created_at'] = $item->created_at 
+                ? $item->created_at->format('Y-m-d H:i:s') 
+                : null;
+                
+            return $data;
+        });
 
         return response()->json($laporans);
     }
